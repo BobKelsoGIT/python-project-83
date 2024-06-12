@@ -1,10 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Список сайтов</title>
-</head>
-<body>
-
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<div class="container-lg mt-3">
+    <div class="row">
+        <div class="col-12 col-md-10 col-lg-8 mx-auto border rounded-3 bg-light p-5">
+            <h3 class="display-5">Сайты</h3>
+            <div class="table-responsive">
+            <table class="table table-bordered table-hover text-nowrap" data-test="url">
+                <tbody>
+                    <tr>
+                        <td>ID</td>
+                        <td>Имя</td>
+                        <td>Последняя проверка</td>
+                        <td>Дата создания</td>
+                    </tr>
+                    {% for url in urls %}
+                    <tr>
+                        <td>{{ url.id }}</td>
+                        <td>{{ url.name }}</td>
+                        <td>{{ url.last_check }}</td>
+                        <td>{{ url.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+    </div>
+            </div>
+    </div>
+</div>
+{% endblock %}
