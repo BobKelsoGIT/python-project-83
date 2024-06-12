@@ -29,7 +29,7 @@ def check_url():
         parsed_url = f"{url.scheme}://{url.netloc}"
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("INSERT INTO urls (name, created_at) VALUES (%s, %s)", (parsed_url, datetime.datetime))
+        cur.execute("INSERT INTO urls (name, created_at) VALUES (%s, %s)", (parsed_url, datetime.datetime.now()))
         conn.commit()
         cur.close()
         conn.close()
