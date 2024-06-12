@@ -4,6 +4,7 @@ import psycopg2
 from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
+import datetime
 
 load_dotenv()
 
@@ -28,7 +29,7 @@ def check_url():
         parsed_url = f"{url.scheme}://{url.netloc}"
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("INSERT INTO urls (name) VALUES (%s)", (parsed_url,))
+        cur.execute("INSERT INTO urls (name, created_at) VALUES (%s, %s)", (parsed_url, datetime.datetime))
         conn.commit()
         cur.close()
         conn.close()
