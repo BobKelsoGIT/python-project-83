@@ -20,5 +20,12 @@ def index():
     )
 
 
+@app.route('/urls')
+def urls():
+    return render_template(
+        'urls.html',
+    )
+
+
 if __name__ == '__main__':
     app.run()
