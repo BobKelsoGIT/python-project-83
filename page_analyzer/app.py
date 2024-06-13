@@ -1,117 +1,104 @@
 from flask import Flask, render_template, request, url_for, redirect, flash, get_flashed_messages
 import os
-import psycopg2
+
 import requests
 from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
 from datetime import datetime
 
-from psycopg2.extras import DictCursor
+from datafunc import fetchall_query, fetchone_query, execute_query
 
 load_dotenv()
 
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 @app.route('/')
 def index():
-    return render_template(
-        'index.html',
-    )
+    messages = get_flashed_messages(with_categories=True)
+    return render_template('index.html', messages=messages)
 
 
 @app.route('/add', methods=['POST'])
 def add_url():
     current_url = request.form['url']
-    if validators.url(current_url):
-        url = urlparse(current_url)
-        parsed_url = f"{url.scheme}://{url.netloc}"
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO urls (name, created_at) VALUES (%s, %s)",
-            (parsed_url, datetime.now().replace(microsecond=0))
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-
+    if not validators.url(current_url):
+        flash('Недействительный URL', 'error')
         return redirect(url_for('index'))
+
+    url = urlparse(current_url)
+    parsed_url = f"{url.scheme}://{url.netloc}"
+
+    query_check = "SELECT id FROM urls WHERE name = %s"
+    result = fetchone_query(query_check, (parsed_url,))
+
+    if result:
+        url_id = result['id']
+        flash('URL уже существует', 'info')
+    else:
+        query_insert = "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id"
+        result = fetchone_query(query_insert, (parsed_url, datetime.now().replace(microsecond=0)))
+        url_id = result['id']
+        flash('URL успешно добавлен', 'success')
+
+    return redirect(url_for('url_info', id=url_id))
 
 
 @app.route('/urls')
 def urls():
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor(cursor_factory=DictCursor)
-    query_urls = (
-        'SELECT '
-        'urls.id AS id, '
-        'urls.name AS name, '
-        'url_checks.created_at AS last_check, '
-        'url_checks.status_code AS status_code '
-        'FROM urls '
-        'LEFT JOIN url_checks '
-        'ON urls.id = url_checks.url_id '
-        'AND url_checks.id = ('
-        'SELECT max(id) FROM url_checks '
-        'WHERE urls.id = url_checks.url_id) '
-        'ORDER BY urls.id DESC;'
-    )
-    cur.execute(query_urls)
-    urls = cur.fetchall()
-    conn.close()
-    return render_template(
-        'urls.html',
-        urls=urls,
-    )
+    query_urls = """
+        SELECT 
+            urls.id AS id, 
+            urls.name AS name, 
+            url_checks.created_at AS last_check, 
+            url_checks.status_code AS status_code 
+        FROM urls 
+        LEFT JOIN url_checks 
+        ON urls.id = url_checks.url_id 
+        AND url_checks.id = (
+            SELECT max(id) FROM url_checks 
+            WHERE urls.id = url_checks.url_id
+        ) 
+        ORDER BY urls.id DESC;
+    """
+    urls = fetchall_query(query_urls, ())
+    return render_template('urls.html', urls=urls)
 
 
-@app.route('/urls/<int:id>', methods=['GET'])
+@app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor(cursor_factory=DictCursor)
     query_url = "SELECT * FROM urls WHERE id = %s;"
-    cur.execute(query_url, (id,))
-    url = cur.fetchone()
+    url = fetchone_query(query_url, (id,))
 
     query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
-    cur.execute(query_checks, (id,))
-    url_checks = cur.fetchall()
-    conn.close()
+    url_checks = fetchall_query(query_checks, (id,))
+
     messages = get_flashed_messages(with_categories=True)
 
-    return render_template(
-        'url_info.html',
-        url=url,
-        url_checks=url_checks,
-        messages=messages,
-    )
+    return render_template('url_info.html', url=url, url_checks=url_checks, messages=messages)
 
 
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor(cursor_factory=DictCursor)
-    url_id = id
     query_url_name = "SELECT name FROM urls WHERE id = %s;"
-    cur.execute(query_url_name, (id,))
-    url_name = cur.fetchone()
+    url_name = fetchone_query(query_url_name, (id,))
+
+    if not url_name:
+        flash('URL не найден', 'error')
+        return redirect(url_for('url_info', id=id))
+
     try:
-        response = requests.get(url_name[0])
+        response = requests.get(url_name['name'])
+        status_code = response.status_code
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'error')
         return redirect(url_for('url_info', id=id))
 
-    status_code = response.status_code
     query = "INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, %s);"
-    cur.execute(query, (url_id, status_code, datetime.today()))
-    conn.commit()
-    cur.close()
-    conn.close()
+    execute_query(query, (id, status_code, datetime.now().replace(microsecond=0)))
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
@@ -119,9 +106,7 @@ def check_url(id):
 
 @app.get('/404')
 def missed_page():
-    return render_template(
-        '404.html',
-    )
+    return render_template('404.html')
 
 
 if __name__ == '__main__':
