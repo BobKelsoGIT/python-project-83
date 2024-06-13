@@ -1,11 +1,17 @@
-from flask import Flask, render_template, request, url_for, redirect, flash, get_flashed_messages
+from flask import (Flask,
+                   render_template,
+                   request,
+                   url_for,
+                   redirect,
+                   flash,
+                   get_flashed_messages)
 import os
 
 import requests
 from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import date
 from parser import parse_page
 
 from datafunc import fetchall_query, fetchone_query, execute_query
@@ -40,8 +46,10 @@ def add_url():
         url_id = result['id']
         flash('URL уже существует', 'info')
     else:
-        query_insert = "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id"
-        result = fetchone_query(query_insert, (parsed_url, datetime.now().replace(microsecond=0)))
+        query_insert = ("INSERT INTO urls (name, created_at)"
+                        "VALUES (%s, %s) RETURNING id")
+        result = fetchone_query(query_insert,
+                                (parsed_url, date.today()))
         url_id = result['id']
         flash('URL успешно добавлен', 'success')
 
@@ -51,18 +59,18 @@ def add_url():
 @app.route('/urls')
 def urls():
     query_urls = """
-        SELECT 
-            urls.id AS id, 
-            urls.name AS name, 
-            url_checks.created_at AS last_check, 
-            url_checks.status_code AS status_code 
-        FROM urls 
-        LEFT JOIN url_checks 
-        ON urls.id = url_checks.url_id 
+        SELECT
+            urls.id AS id,
+            urls.name AS name,
+            url_checks.created_at AS last_check,
+            url_checks.status_code AS status_code
+        FROM urls
+        LEFT JOIN url_checks
+        ON urls.id = url_checks.url_id
         AND url_checks.id = (
-            SELECT max(id) FROM url_checks 
+            SELECT max(id) FROM url_checks
             WHERE urls.id = url_checks.url_id
-        ) 
+        )
         ORDER BY urls.id DESC;
     """
     urls = fetchall_query(query_urls, ())
@@ -79,7 +87,12 @@ def url_info(id):
 
     messages = get_flashed_messages(with_categories=True)
 
-    return render_template('url_info.html', url=url, url_checks=url_checks, messages=messages)
+    return render_template(
+        'url_info.html',
+        url=url,
+        url_checks=url_checks,
+        messages=messages,
+    )
 
 
 @app.post('/urls/<int:id>/checks')
@@ -103,9 +116,11 @@ def check_url(id):
     h1 = url_data['h1']
     title = url_data['title']
     description = url_data['description']
-    query = ("INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)"
+    query = ("INSERT INTO url_checks"
+             "(url_id, status_code, h1, title, description, created_at)"
              "VALUES (%s, %s, %s, %s, %s, %s);")
-    execute_query(query,(id, status_code, h1, title, description, datetime.now().replace(microsecond=0)))
+    execute_query(query,
+                  (id, status_code, h1, title, description, date.today()))
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
