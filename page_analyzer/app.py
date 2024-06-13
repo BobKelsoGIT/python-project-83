@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
 from datetime import date
-from parser import parse_page
+from page_analyzer.parser import parse_page
 
 from datafunc import fetchall_query, fetchone_query, execute_query
 
