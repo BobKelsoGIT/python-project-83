@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
 
-from datafunc import fetchall_query, fetchone_query, execute_query
+from .datafunc import fetchall_query, fetchone_query, execute_query
 
 load_dotenv()
 
