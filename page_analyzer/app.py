@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, flash
+from flask import Flask, render_template, request, url_for, redirect, flash, get_flashed_messages
 import os
 import psycopg2
 import requests
@@ -82,11 +82,13 @@ def url_info(id):
     cur.execute(query_checks, (id,))
     url_checks = cur.fetchall()
     conn.close()
+    messages = get_flashed_messages(with_categories=True)
 
     return render_template(
         'url_info.html',
         url=url,
         url_checks=url_checks,
+        messages=messages,
     )
 
 
@@ -98,12 +100,19 @@ def check_url(id):
     query_url_name = "SELECT name FROM urls WHERE id = %s;"
     cur.execute(query_url_name, (id,))
     url_name = cur.fetchone()
-    status_code = requests.get(url_name[0]).status_code
+    try:
+        response = requests.get(url_name[0])
+    except requests.exceptions.RequestException:
+        flash('Произошла ошибка при проверке', 'error')
+        return redirect(url_for('url_info', id=id))
+
+    status_code = response.status_code
     query = "INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, %s);"
-    cur.execute(query, (url_id, status_code, datetime.now().replace(microsecond=0)))
+    cur.execute(query, (url_id, status_code, datetime.today()))
     conn.commit()
     cur.close()
     conn.close()
+    flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
 
