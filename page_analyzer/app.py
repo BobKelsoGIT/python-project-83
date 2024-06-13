@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
 from datetime import datetime
+from parser import parse_page
 
 from datafunc import fetchall_query, fetchone_query, execute_query
 
@@ -97,8 +98,14 @@ def check_url(id):
         flash('Произошла ошибка при проверке', 'error')
         return redirect(url_for('url_info', id=id))
 
-    query = "INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, %s);"
-    execute_query(query, (id, status_code, datetime.now().replace(microsecond=0)))
+    url_data = parse_page(response.text)
+    print(url_data)
+    h1 = url_data['h1']
+    title = url_data['title']
+    description = url_data['description']
+    query = ("INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)"
+             "VALUES (%s, %s, %s, %s, %s, %s);")
+    execute_query(query,(id, status_code, h1, title, description, datetime.now().replace(microsecond=0)))
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
