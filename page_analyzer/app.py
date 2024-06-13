@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect, flash
 import os
 import psycopg2
+import requests
 from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
@@ -47,19 +48,19 @@ def urls():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor(cursor_factory=DictCursor)
     query_urls = (
-            'SELECT '
-            'urls.id AS id, '
-            'urls.name AS name, '
-            'url_checks.created_at AS last_check, '
-            'urls.created_at as created_at '
-            'FROM urls '
-            'LEFT JOIN url_checks '
-            'ON urls.id = url_checks.url_id '
-            'AND url_checks.id = ('
-            'SELECT max(id) FROM url_checks '
-            'WHERE urls.id = url_checks.url_id) '
-            'ORDER BY urls.id DESC;'
-        )
+        'SELECT '
+        'urls.id AS id, '
+        'urls.name AS name, '
+        'url_checks.created_at AS last_check, '
+        'url_checks.status_code AS status_code '
+        'FROM urls '
+        'LEFT JOIN url_checks '
+        'ON urls.id = url_checks.url_id '
+        'AND url_checks.id = ('
+        'SELECT max(id) FROM url_checks '
+        'WHERE urls.id = url_checks.url_id) '
+        'ORDER BY urls.id DESC;'
+    )
     cur.execute(query_urls)
     urls = cur.fetchall()
     conn.close()
@@ -73,14 +74,13 @@ def urls():
 def url_info(id):
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor(cursor_factory=DictCursor)
-    query_url = "SELECT * FROM urls WHERE id = %s"
+    query_url = "SELECT * FROM urls WHERE id = %s;"
     cur.execute(query_url, (id,))
     url = cur.fetchone()
 
-    query_checks = "SELECT * FROM url_checks WHERE url_id = %s"
-    cur.execute(query_checks, (id,)),
+    query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
+    cur.execute(query_checks, (id,))
     url_checks = cur.fetchall()
-    print(url_checks)
     conn.close()
 
     return render_template(
@@ -95,8 +95,12 @@ def check_url(id):
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor(cursor_factory=DictCursor)
     url_id = id
-    query = "INSERT INTO url_checks (url_id, created_at) VALUES (%s, %s);"
-    cur.execute(query, (url_id, datetime.now().replace(microsecond=0)))
+    query_url_name = "SELECT name FROM urls WHERE id = %s;"
+    cur.execute(query_url_name, (id,))
+    url_name = cur.fetchone()
+    status_code = requests.get(url_name[0]).status_code
+    query = "INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, %s);"
+    cur.execute(query, (url_id, status_code, datetime.now().replace(microsecond=0)))
     conn.commit()
     cur.close()
     conn.close()

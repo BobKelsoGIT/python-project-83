@@ -11,14 +11,14 @@
                         <td>ID</td>
                         <td>Имя</td>
                         <td>Последняя проверка</td>
-                        <td>Дата создания</td>
+                        <td>Код ответа</td>
                     </tr>
                     {% for url in urls %}
                     <tr>
                         <td>{{ url.id }}</td>
                         <td>{{ url.name }}</td>
                         <td>{{ url.last_check }}</td>
-                        <td>{{ url.created_at }}</td>
+                        <td>{{ url.status_code }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
