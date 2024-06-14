@@ -1,9 +1,8 @@
 from page_analyzer.app import app
-from page_analyzer.datafunc import fetchall_query, fetchone_query, execute_query
+from page_analyzer.datafunc import fetch_query, execute_query
 
 __all__ = (
     'app',
-    'fetchall_query',
-    'fetchone_query',
+    'fetch_query',
     'execute_query',
 )

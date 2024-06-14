@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
 
-from .datafunc import fetchall_query, fetchone_query, execute_query
+from .datafunc import fetch_query, execute_query
 
 load_dotenv()
 
@@ -46,7 +46,7 @@ def add_url():
     parsed_url = f"{url.scheme}://{url.netloc}"
 
     query_check = "SELECT id FROM urls WHERE name = %s"
-    result = fetchone_query(query_check, (parsed_url,))
+    result = fetch_query(query_check, (parsed_url,), 'one')
 
     if result:
         url_id = result['id']
@@ -54,8 +54,8 @@ def add_url():
     else:
         query_insert = ("INSERT INTO urls (name, created_at)"
                         "VALUES (%s, %s) RETURNING id")
-        result = fetchone_query(query_insert,
-                                (parsed_url, date.today()))
+        result = fetch_query(query_insert,
+                                (parsed_url, date.today()), 'one')
         url_id = result['id']
         flash('URL успешно добавлен', 'success')
 
@@ -79,20 +79,20 @@ def urls():
         )
         ORDER BY urls.id DESC;
     """
-    urls = fetchall_query(query_urls, ())
+    urls = fetch_query(query_urls, (), 'all')
     return render_template('urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
     query_url = "SELECT * FROM urls WHERE id = %s;"
-    url = fetchone_query(query_url, (id,))
+    url = fetch_query(query_url, (id,), 'one')
     if url is None:
         flash('Запрошенной страницы не существует', 'error')
         return redirect(url_for('page_not_found'))
 
     query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
-    url_checks = fetchall_query(query_checks, (id,))
+    url_checks = fetch_query(query_checks, (id,), 'all')
 
     messages = get_flashed_messages(with_categories=True)
 
@@ -107,7 +107,7 @@ def url_info(id):
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
     query_url_name = "SELECT name FROM urls WHERE id = %s;"
-    url_name = fetchone_query(query_url_name, (id,))
+    url_name = fetch_query(query_url_name, (id,), 'one')
 
     if not url_name:
         flash('URL не найден', 'error')
