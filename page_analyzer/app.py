@@ -55,7 +55,7 @@ def add_url():
         query_insert = ("INSERT INTO urls (name, created_at)"
                         "VALUES (%s, %s) RETURNING id")
         result = fetch_query(query_insert,
-                                (parsed_url, date.today()), 'one')
+                             (parsed_url, date.today()), 'one')
         url_id = result['id']
         flash('URL успешно добавлен', 'success')
 
