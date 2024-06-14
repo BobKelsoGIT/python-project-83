@@ -29,6 +29,12 @@ def index():
     return render_template('index.html', messages=messages)
 
 
+@app.route('/404')
+def page_not_found():
+    messages = get_flashed_messages(with_categories=True)
+    return render_template('404.html', messages=messages)
+
+
 @app.route('/add', methods=['POST'])
 def add_url():
     current_url = request.form['url']
@@ -81,6 +87,9 @@ def urls():
 def url_info(id):
     query_url = "SELECT * FROM urls WHERE id = %s;"
     url = fetchone_query(query_url, (id,))
+    if url is None:
+        flash('Запрошенной страницы не существует', 'error')
+        return redirect(url_for('page_not_found'))
 
     query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
     url_checks = fetchall_query(query_checks, (id,))
@@ -111,8 +120,11 @@ def check_url(id):
         flash('Произошла ошибка при проверке', 'error')
         return redirect(url_for('url_info', id=id))
 
+    if status_code != 200:
+        flash('Произошла ошибка при проверке', 'error')
+        return redirect(url_for('url_info', id=id))
+
     url_data = parse_page(response.text)
-    print(url_data)
     h1 = url_data['h1']
     title = url_data['title']
     description = url_data['description']
