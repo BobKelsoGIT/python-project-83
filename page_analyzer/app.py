@@ -114,7 +114,7 @@ def check_url(id):
         return redirect(url_for('url_info', id=id))
 
     try:
-        response = requests.get(url_name['name'])
+        response = requests.get(url_name['name'], timeout=10)
         status_code = response.status_code
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'error')
