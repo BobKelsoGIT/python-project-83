@@ -50,7 +50,7 @@ def add_url():
         url_id = result['id']
         flash('Страница уже существует', 'info')
     else:
-        url_id = insert_url(parsed_url, date.today())['id']
+        url_id = insert_url(parsed_url, date.today())
         flash('Страница успешно добавлена', 'success')
 
     return redirect(url_for('url_info', id=url_id))
