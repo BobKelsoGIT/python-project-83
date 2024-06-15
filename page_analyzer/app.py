@@ -13,12 +13,12 @@ import validators
 from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
-from db import (fetch_url_by_name,
-                insert_url,
-                fetch_urls_with_latest_checks,
-                fetch_url_by_id,
-                fetch_checks_by_url_id,
-                insert_check)
+from .db import (fetch_url_by_name,
+                 insert_url,
+                 fetch_urls_with_latest_checks,
+                 fetch_url_by_id,
+                 fetch_checks_by_url_id,
+                 insert_check)
 
 load_dotenv()
 
