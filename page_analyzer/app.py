@@ -39,7 +39,7 @@ def page_not_found():
 def add_url():
     current_url = request.form['url']
     if not validators.url(current_url):
-        flash('Недействительный URL', 'error')
+        flash('Некорректный URL', 'error')
         return redirect(url_for('index'))
 
     url = urlparse(current_url)
@@ -50,14 +50,14 @@ def add_url():
 
     if result:
         url_id = result['id']
-        flash('URL уже существует', 'info')
+        flash('Страница уже существует', 'info')
     else:
         query_insert = ("INSERT INTO urls (name, created_at)"
                         "VALUES (%s, %s) RETURNING id")
         result = fetch_query(query_insert,
                              (parsed_url, date.today()), 'one')
         url_id = result['id']
-        flash('URL успешно добавлен', 'success')
+        flash('Страница успешно добавлена', 'success')
 
     return redirect(url_for('url_info', id=url_id))
 
