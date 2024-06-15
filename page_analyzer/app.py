@@ -4,7 +4,8 @@ from flask import (Flask,
                    url_for,
                    redirect,
                    flash,
-                   get_flashed_messages)
+                   get_flashed_messages,
+                   abort)
 import os
 
 import requests
@@ -21,18 +22,13 @@ load_dotenv()
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
 @app.route('/')
 def index():
     messages = get_flashed_messages(with_categories=True)
     return render_template('index.html', messages=messages)
-
-
-@app.route('/404')
-def page_not_found():
-    messages = get_flashed_messages(with_categories=True)
-    return render_template('404.html', messages=messages)
 
 
 @app.route('/add', methods=['POST'])
@@ -46,7 +42,7 @@ def add_url():
     parsed_url = f"{url.scheme}://{url.netloc}"
 
     query_check = "SELECT id FROM urls WHERE name = %s"
-    result = fetch_query(query_check, (parsed_url,), 'one')
+    result = fetch_query(app, query_check, (parsed_url,), 'one')
 
     if result:
         url_id = result['id']
@@ -54,7 +50,7 @@ def add_url():
     else:
         query_insert = ("INSERT INTO urls (name, created_at)"
                         "VALUES (%s, %s) RETURNING id")
-        result = fetch_query(query_insert,
+        result = fetch_query(app, query_insert,
                              (parsed_url, date.today()), 'one')
         url_id = result['id']
         flash('Страница успешно добавлена', 'success')
@@ -79,20 +75,20 @@ def urls():
         )
         ORDER BY urls.id DESC;
     """
-    urls = fetch_query(query_urls, (), 'all')
+    urls = fetch_query(app, query_urls, (), 'all')
     return render_template('urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
     query_url = "SELECT * FROM urls WHERE id = %s;"
-    url = fetch_query(query_url, (id,), 'one')
+    url = fetch_query(app, query_url, (id,), 'one')
     if url is None:
         flash('Запрошенной страницы не существует', 'error')
-        return redirect(url_for('page_not_found'))
+        abort(404)
 
     query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
-    url_checks = fetch_query(query_checks, (id,), 'all')
+    url_checks = fetch_query(app, query_checks, (id,), 'all')
 
     messages = get_flashed_messages(with_categories=True)
 
@@ -107,7 +103,7 @@ def url_info(id):
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
     query_url_name = "SELECT name FROM urls WHERE id = %s;"
-    url_name = fetch_query(query_url_name, (id,), 'one')
+    url_name = fetch_query(app, query_url_name, (id,), 'one')
 
     if not url_name:
         flash('URL не найден', 'error')
@@ -131,13 +127,21 @@ def check_url(id):
     query = ("INSERT INTO url_checks"
              "(url_id, status_code, h1, title, description, created_at)"
              "VALUES (%s, %s, %s, %s, %s, %s);")
-    execute_query(query,
+    execute_query(app, query,
                   (id, status_code, h1, title, description, date.today()))
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
 
 
-@app.get('/404')
-def missed_page():
-    return render_template('404.html')
+@app.errorhandler(404)
+def page_not_found(error):
+    messages = get_flashed_messages(with_categories=True)
+    return render_template(
+        '404.html',
+        messages=messages,
+    ), 404
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
