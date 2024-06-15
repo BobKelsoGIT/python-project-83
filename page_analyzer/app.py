@@ -7,15 +7,18 @@ from flask import (Flask,
                    get_flashed_messages,
                    abort)
 import os
-
 import requests
 from urllib.parse import urlparse
 import validators
 from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
-
-from .datafunc import fetch_query, execute_query
+from db import (fetch_url_by_name,
+                insert_url,
+                fetch_urls_with_latest_checks,
+                fetch_url_by_id,
+                fetch_checks_by_url_id,
+                insert_check)
 
 load_dotenv()
 
@@ -41,18 +44,13 @@ def add_url():
     url = urlparse(current_url)
     parsed_url = f"{url.scheme}://{url.netloc}"
 
-    query_check = "SELECT id FROM urls WHERE name = %s"
-    result = fetch_query(app, query_check, (parsed_url,), 'one')
+    result = fetch_url_by_name(parsed_url)
 
     if result:
         url_id = result['id']
         flash('Страница уже существует', 'info')
     else:
-        query_insert = ("INSERT INTO urls (name, created_at)"
-                        "VALUES (%s, %s) RETURNING id")
-        result = fetch_query(app, query_insert,
-                             (parsed_url, date.today()), 'one')
-        url_id = result['id']
+        url_id = insert_url(parsed_url, date.today())['id']
         flash('Страница успешно добавлена', 'success')
 
     return redirect(url_for('url_info', id=url_id))
@@ -60,36 +58,18 @@ def add_url():
 
 @app.route('/urls')
 def urls():
-    query_urls = """
-        SELECT
-            urls.id AS id,
-            urls.name AS name,
-            url_checks.created_at AS last_check,
-            url_checks.status_code AS status_code
-        FROM urls
-        LEFT JOIN url_checks
-        ON urls.id = url_checks.url_id
-        AND url_checks.id = (
-            SELECT max(id) FROM url_checks
-            WHERE urls.id = url_checks.url_id
-        )
-        ORDER BY urls.id DESC;
-    """
-    urls = fetch_query(app, query_urls, (), 'all')
+    urls = fetch_urls_with_latest_checks()
     return render_template('urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
-    query_url = "SELECT * FROM urls WHERE id = %s;"
-    url = fetch_query(app, query_url, (id,), 'one')
+    url = fetch_url_by_id(id)
     if url is None:
         flash('Запрошенной страницы не существует', 'error')
         abort(404)
 
-    query_checks = "SELECT * FROM url_checks WHERE url_id = %s;"
-    url_checks = fetch_query(app, query_checks, (id,), 'all')
-
+    url_checks = fetch_checks_by_url_id(id)
     messages = get_flashed_messages(with_categories=True)
 
     return render_template(
@@ -102,15 +82,14 @@ def url_info(id):
 
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
-    query_url_name = "SELECT name FROM urls WHERE id = %s;"
-    url_name = fetch_query(app, query_url_name, (id,), 'one')
+    url = fetch_url_by_id(id)
 
-    if not url_name:
+    if not url:
         flash('URL не найден', 'error')
         return redirect(url_for('url_info', id=id))
 
     try:
-        response = requests.get(url_name['name'], timeout=10)
+        response = requests.get(url['name'], timeout=10)
         status_code = response.status_code
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'error')
@@ -124,11 +103,8 @@ def check_url(id):
     h1 = url_data['h1']
     title = url_data['title']
     description = url_data['description']
-    query = ("INSERT INTO url_checks"
-             "(url_id, status_code, h1, title, description, created_at)"
-             "VALUES (%s, %s, %s, %s, %s, %s);")
-    execute_query(app, query,
-                  (id, status_code, h1, title, description, date.today()))
+
+    insert_check(id, status_code, h1, title, description)
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
@@ -137,10 +113,7 @@ def check_url(id):
 @app.errorhandler(404)
 def page_not_found(error):
     messages = get_flashed_messages(with_categories=True)
-    return render_template(
-        '404.html',
-        messages=messages,
-    ), 404
+    return render_template('404.html', messages=messages), 404
 
 
 if __name__ == '__main__':
