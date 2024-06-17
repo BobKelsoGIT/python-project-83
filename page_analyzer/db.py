@@ -22,7 +22,7 @@ def insert_url(url, created_at):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, (url, created_at))
-            return cur.fetchone()
+            return cur.fetchone()[0]
 
 
 def fetch_urls_with_latest_checks():
