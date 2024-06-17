@@ -39,7 +39,7 @@ def add_url():
     current_url = request.form['url']
     if not validators.url(current_url):
         flash('Некорректный URL', 'error')
-        return render_template('index.html', search=current_url)
+        return render_template('index.html', search=current_url), 422
 
     url = urlparse(current_url)
     parsed_url = f"{url.scheme}://{url.netloc}"
