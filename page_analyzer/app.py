@@ -28,10 +28,11 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
-@app.route('/')
+@app.route('/', methods=['POST', 'GET'])
 def index():
     messages = get_flashed_messages(with_categories=True)
-    return render_template('index.html', messages=messages)
+    search = request.args.get('search', '')
+    return render_template('index.html', messages=messages, search=search)
 
 
 @app.route('/add', methods=['POST'])
@@ -39,7 +40,7 @@ def add_url():
     current_url = request.form['url']
     if not validators.url(current_url):
         flash('Некорректный URL', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('index', search=current_url))
 
     url = urlparse(current_url)
     parsed_url = f"{url.scheme}://{url.netloc}"
