@@ -28,19 +28,18 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
-@app.route('/', methods=['POST', 'GET'])
+@app.route('/')
 def index():
-    messages = get_flashed_messages(with_categories=True)
     search = request.args.get('search', '')
-    return render_template('index.html', messages=messages, search=search)
+    return render_template('index.html', search=search)
 
 
-@app.route('/add', methods=['POST'])
+@app.post('/urls')
 def add_url():
     current_url = request.form['url']
     if not validators.url(current_url):
         flash('Некорректный URL', 'error')
-        return redirect(url_for('index', search=current_url))
+        return render_template('index.html', search=current_url)
 
     url = urlparse(current_url)
     parsed_url = f"{url.scheme}://{url.netloc}"
@@ -57,7 +56,7 @@ def add_url():
     return redirect(url_for('url_info', id=url_id))
 
 
-@app.route('/urls')
+@app.get('/urls')
 def urls():
     urls = fetch_urls_with_latest_checks()
     return render_template('urls.html', urls=urls)
@@ -71,13 +70,10 @@ def url_info(id):
         abort(404)
 
     url_checks = fetch_checks_by_url_id(id)
-    messages = get_flashed_messages(with_categories=True)
-
     return render_template(
         'url_info.html',
         url=url,
         url_checks=url_checks,
-        messages=messages,
     )
 
 
@@ -113,8 +109,7 @@ def check_url(id):
 
 @app.errorhandler(404)
 def page_not_found(error):
-    messages = get_flashed_messages(with_categories=True)
-    return render_template('404.html', messages=messages), 404
+    return render_template('404.html'), 404
 
 
 if __name__ == '__main__':
