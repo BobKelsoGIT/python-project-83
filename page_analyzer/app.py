@@ -4,7 +4,6 @@ from flask import (Flask,
                    url_for,
                    redirect,
                    flash,
-                   get_flashed_messages,
                    abort)
 import os
 import requests
