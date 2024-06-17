@@ -6,13 +6,15 @@
             <h3 class="display-5">Сайты</h3>
             <div class="table-responsive">
             <table class="table table-bordered table-hover text-nowrap" data-test="urls">
-                <tbody>
+                <thead>
                     <tr>
                         <td>ID</td>
                         <td>Имя</td>
                         <td>Последняя проверка</td>
                         <td>Код ответа</td>
                     </tr>
+                </thead>
+                <tbody>
                     {% for url in urls %}
                     <tr>
                         <td>{{ url.id }}</td>
