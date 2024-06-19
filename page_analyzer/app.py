@@ -35,10 +35,13 @@ def url_add():
     current_url = request.form['url']
     if not validate_url(current_url):
         flash('Некорректный URL', 'error')
-        return render_template('index.html', search=current_url), 422
+        return render_template(
+            'index.html',
+            search=current_url,
+        ), 422
+
     normalised_url = normalise_url(current_url)
     result = get_url_by_name(normalised_url)
-
     if result:
         url_id = result['id']
         flash('Страница уже существует', 'info')
@@ -52,7 +55,10 @@ def url_add():
 @app.get('/urls')
 def urls():
     urls = get_urls_with_latest_checks()
-    return render_template('urls.html', urls=urls)
+    return render_template(
+        'urls.html',
+        urls=urls,
+    )
 
 
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
