@@ -86,24 +86,21 @@ def check_url(id):
 
     try:
         response = requests.get(url['name'], timeout=10)
-        status_code = response.status_code
+        response.raise_for_status()
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'error')
         return redirect(url_for('url_info', id=id))
 
-    if status_code != 200:
-        flash('Произошла ошибка при проверке', 'error')
-        return redirect(url_for('url_info', id=id))
-
     url_data = parse_page(response.text)
-    h1 = url_data['h1']
-    title = url_data['title']
-    description = url_data['description']
+    h1 = url_data.get('h1')
+    title = url_data.get('title')
+    description = url_data.get('description')
 
-    insert_check(id, status_code, h1, title, description)
+    insert_check(id, response.status_code, h1, title, description)
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
+
 
 
 @app.errorhandler(404)
