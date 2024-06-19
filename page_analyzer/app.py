@@ -7,11 +7,10 @@ from flask import (Flask,
                    abort)
 import os
 import requests
-from urllib.parse import urlparse
-import validators
 from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
+from url import validate_url, normalise_url
 from .db import (get_url_by_name,
                  add_url,
                  get_urls_with_latest_checks,
@@ -20,9 +19,7 @@ from .db import (get_url_by_name,
                  add_check)
 
 load_dotenv()
-
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
@@ -34,22 +31,19 @@ def index():
 
 
 @app.post('/urls')
-def add_url():
+def url_add():
     current_url = request.form['url']
-    if not validators.url(current_url):
+    if not validate_url(current_url):
         flash('Некорректный URL', 'error')
         return render_template('index.html', search=current_url), 422
-
-    url = urlparse(current_url)
-    parsed_url = f"{url.scheme}://{url.netloc}"
-
-    result = get_url_by_name(parsed_url)
+    normalised_url = normalise_url(current_url)
+    result = get_url_by_name(normalised_url)
 
     if result:
         url_id = result['id']
         flash('Страница уже существует', 'info')
     else:
-        url_id = add_url(parsed_url, date.today())
+        url_id = add_url(normalised_url, date.today())
         flash('Страница успешно добавлена', 'success')
 
     return redirect(url_for('url_info', id=url_id))
@@ -64,7 +58,7 @@ def urls():
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
     url = get_url_by_id(id)
-    if url is None:
+    if not url:
         flash('Запрошенной страницы не существует', 'error')
         abort(404)
 
@@ -77,30 +71,27 @@ def url_info(id):
 
 
 @app.post('/urls/<int:id>/checks')
-def check_url(id):
+def url_check(id):
     url = get_url_by_id(id)
-
     if not url:
         flash('URL не найден', 'error')
         return redirect(url_for('url_info', id=id))
-
     try:
         response = requests.get(url['name'], timeout=10)
         response.raise_for_status()
+        url_data = parse_page(response.text)
+        add_check(
+            id,
+            response.status_code,
+            url_data.get('h1'),
+            url_data.get('title'),
+            url_data.get('description')
+        )
+        flash('Страница успешно проверена', 'success')
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'error')
-        return redirect(url_for('url_info', id=id))
-
-    url_data = parse_page(response.text)
-    h1 = url_data.get('h1')
-    title = url_data.get('title')
-    description = url_data.get('description')
-
-    add_check(id, response.status_code, h1, title, description)
-    flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
-
 
 
 @app.errorhandler(404)
