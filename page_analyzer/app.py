@@ -10,13 +10,13 @@ import requests
 from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
-from url import validate_url, normalise_url
-from .db import (get_url_by_name,
-                 add_url,
-                 get_urls_with_latest_checks,
-                 get_url_by_id,
-                 get_checks_by_url_id,
-                 add_check)
+from page_analyzer.url import validate_url, normalise_url
+from page_analyzer.db import (get_url_by_name,
+                              add_url,
+                              get_urls_with_latest_checks,
+                              get_url_by_id,
+                              get_checks_by_url_id,
+                              add_check)
 
 load_dotenv()
 app = Flask(__name__)
