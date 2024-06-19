@@ -12,12 +12,12 @@ import validators
 from dotenv import load_dotenv
 from datetime import date
 from page_analyzer.parser import parse_page
-from .db import (fetch_url_by_name,
-                 insert_url,
-                 fetch_urls_with_latest_checks,
-                 fetch_url_by_id,
-                 fetch_checks_by_url_id,
-                 insert_check)
+from .db import (get_url_by_name,
+                 add_url,
+                 get_urls_with_latest_checks,
+                 get_url_by_id,
+                 get_checks_by_url_id,
+                 add_check)
 
 load_dotenv()
 
@@ -43,13 +43,13 @@ def add_url():
     url = urlparse(current_url)
     parsed_url = f"{url.scheme}://{url.netloc}"
 
-    result = fetch_url_by_name(parsed_url)
+    result = get_url_by_name(parsed_url)
 
     if result:
         url_id = result['id']
         flash('Страница уже существует', 'info')
     else:
-        url_id = insert_url(parsed_url, date.today())
+        url_id = add_url(parsed_url, date.today())
         flash('Страница успешно добавлена', 'success')
 
     return redirect(url_for('url_info', id=url_id))
@@ -57,18 +57,18 @@ def add_url():
 
 @app.get('/urls')
 def urls():
-    urls = fetch_urls_with_latest_checks()
+    urls = get_urls_with_latest_checks()
     return render_template('urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>', methods=['POST', 'GET'])
 def url_info(id):
-    url = fetch_url_by_id(id)
+    url = get_url_by_id(id)
     if url is None:
         flash('Запрошенной страницы не существует', 'error')
         abort(404)
 
-    url_checks = fetch_checks_by_url_id(id)
+    url_checks = get_checks_by_url_id(id)
     return render_template(
         'url_info.html',
         url=url,
@@ -78,7 +78,7 @@ def url_info(id):
 
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
-    url = fetch_url_by_id(id)
+    url = get_url_by_id(id)
 
     if not url:
         flash('URL не найден', 'error')
@@ -96,7 +96,7 @@ def check_url(id):
     title = url_data.get('title')
     description = url_data.get('description')
 
-    insert_check(id, response.status_code, h1, title, description)
+    add_check(id, response.status_code, h1, title, description)
     flash('Страница успешно проверена', 'success')
 
     return redirect(url_for('url_info', id=id))
